@@ -3,7 +3,7 @@ import { GameCanvas, GameContextProvider } from "@/components/game";
 export default function Home() {
   return (
     <div className="w-dvw h-dvh overflow-hidden">
-      <main className="w-[600px] mx-auto relative">
+      <main className="w-full max-w-[600px] mx-auto relative">
         <GameContextProvider>
           <GameCanvas/>
         </GameContextProvider>

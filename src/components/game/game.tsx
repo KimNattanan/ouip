@@ -258,7 +258,7 @@ export function GameCanvas() {
       });
     }
     function handleTouchEnd(event: TouchEvent) {
-      const touch = event.touches[event.touches.length-1];
+      const touch = event.changedTouches[event.changedTouches.length-1];
       if(!touch) return;
       game.setTouchEnd({
         x: touch.clientX,
