@@ -11,6 +11,12 @@ type GameType = {
   keyPressed: Map<string,boolean>;
   mouse0Down: Point|null;
   setMouse0Down: (p: Point|null) => void;
+  touchStart: Point|null;
+  setTouchStart: (p: Point|null) => void;
+  touchEnd: Point|null;
+  setTouchEnd: (p: Point|null) => void;
+  screenWidth: number;
+  setScreenWidth: (w: number) => void;
   status: string;
   setStatus: (s: string) => void;
   showingWidth: number;
@@ -37,6 +43,12 @@ export function GameContextProvider({children}:{children: ReactNode}) {
     keyPressed,
     mouse0Down: null,
     setMouse0Down: (p: Point|null)=>{ game.mouse0Down = p; },
+    touchStart: null,
+    setTouchStart: (p: Point|null)=>{ game.touchStart = p; },
+    touchEnd: null,
+    setTouchEnd: (p: Point|null)=>{ game.touchEnd = p; },
+    screenWidth: 0,
+    setScreenWidth: (w: number)=>{ game.screenWidth = w; },
     status: 'start',
     setStatus: (s: string)=>{ game.status = s; },
     showingWidth: 0,
@@ -61,9 +73,9 @@ export function GameContextProvider({children}:{children: ReactNode}) {
   )
 }
 
-const screenWidth = 600;
-const screenHeight = 300;
-const floorY = screenHeight * 0.9;
+const maxCanvasWidth = 600;
+const maxCanvasHeight = 300;
+const floorY = 270;
 
 export function GameCanvas() {
   const { game } = useGameContext();
@@ -73,8 +85,6 @@ export function GameCanvas() {
 
   const gameOverText = useAnimator([{ url: '/ui/game-over.png', sec: 999 }]);  
   const restartBtn = {
-    x: (screenWidth - 44) * 0.5,
-    y: (screenHeight*0.7 - 35*0.5),
     w: 44,
     h: 35,
     anim: useAnimator([{ url: '/ui/restart-btn.png', sec: 999 }]),
@@ -85,26 +95,28 @@ export function GameCanvas() {
     3000,
   );
   const enemy1 = useEnemy(
-    { x: screenWidth + 794/18/2, y: floorY },
+    { x: maxCanvasWidth + 794/18/2, y: floorY },
     { x: 794/18, y: 848/18 },
-    screenWidth,
+    500,
     3,3,
   );
   const enemy2 = useEnemy(
-    { x: screenWidth + 794/18/2, y: floorY },
+    { x: maxCanvasWidth + 794/18/2, y: floorY },
     { x: 794/18, y: 848/18 },
-    screenWidth,
+    500,
     3,5,
   );
   const enemy3 = useEnemy(
-    { x: screenWidth + 794/30/2, y: floorY },
+    { x: maxCanvasWidth + 794/30/2, y: floorY },
     { x: 794/30, y: 848/30 },
-    screenWidth,
+    500,
     3,10,
   );
 
   const updateGame = (canvas: HTMLCanvasElement, dt: number) => {
-    plr.upd(dt)
+    const restartBtnX = (game.screenWidth - restartBtn.w) * 0.5;
+    const restartBtnY = (maxCanvasHeight*0.7 - restartBtn.h*0.5);
+    plr.upd(dt);
     if(game.status == 'playing'){
       game.setScore(game.score + dt*10);
       enemy1.upd(dt);
@@ -124,7 +136,18 @@ export function GameCanvas() {
     else if(game.status == 'restart'){
       if(
         game.keyPressed.get(' ') || game.keyPressed.get('ArrowUp') ||
-        game.mouse0Down && checkPointInRect(restartBtn.x, restartBtn.x+restartBtn.w, restartBtn.y, restartBtn.y+restartBtn.h, game.mouse0Down.x-canvas.getBoundingClientRect().x, game.mouse0Down.y-canvas.getBoundingClientRect().y)
+        game.mouse0Down && checkPointInRect(restartBtnX,
+                                            restartBtnX + restartBtn.w,
+                                            restartBtnY,
+                                            restartBtnY + restartBtn.h,
+                                            game.mouse0Down.x - canvas.getBoundingClientRect().x,
+                                            game.mouse0Down.y - canvas.getBoundingClientRect().y) ||
+        game.touchEnd && checkPointInRect(restartBtnX,
+                                          restartBtnX + restartBtn.w,
+                                          restartBtnY,
+                                          restartBtnY + restartBtn.h,
+                                          game.touchEnd.x - canvas.getBoundingClientRect().x,
+                                          game.touchEnd.y - canvas.getBoundingClientRect().y)
       ){
         game.setStatus('playing');
         enemy1.reset();
@@ -134,8 +157,12 @@ export function GameCanvas() {
         game.setScore(0);
       }
     }
+    if(game.touchStart) game.setTouchStart(null);
+    if(game.touchEnd) game.setTouchEnd(null);
   };
   const drawGame = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
+    const restartBtnX = (game.screenWidth - restartBtn.w) * 0.5;
+    const restartBtnY = (maxCanvasHeight*0.7 - restartBtn.h*0.5);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     plr.draw(canvas, ctx);
     enemy1.draw(canvas, ctx);
@@ -147,7 +174,7 @@ export function GameCanvas() {
     ctx.textBaseline = "top";
     ctx.font = "20px Monospace";
     ctx.fillStyle = '#acacac';
-    ctx.fillText(`HI ${game.hiScore.toFixed(0)} ${game.score.toFixed(0)}`, screenWidth - 20, 100);
+    ctx.fillText(`HI ${game.hiScore.toFixed(0)} ${game.score.toFixed(0)}`, game.screenWidth - 20, 100);
 
     // floor line
     ctx.beginPath();
@@ -163,8 +190,8 @@ export function GameCanvas() {
       if(gameOverTextImg){
         ctx.drawImage(
           gameOverTextImg,
-          (screenWidth - 118*2) * 0.5,
-          (screenHeight - 10*2) * 0.5,
+          (game.screenWidth - 118*2) * 0.5,
+          (maxCanvasHeight - 10*2) * 0.5,
           118*2,
           10*2
         );
@@ -174,8 +201,8 @@ export function GameCanvas() {
         if(restartBtnImg){
           ctx.drawImage(
             restartBtnImg,
-            restartBtn.x,
-            restartBtn.y,
+            restartBtnX,
+            restartBtnY,
             restartBtn.w,
             restartBtn.h,
           );
@@ -191,6 +218,13 @@ export function GameCanvas() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scale = window.devicePixelRatio || 1;
+
+    canvas.width = rect.width * scale;
+    canvas.height = rect.height * scale;
+    ctx.scale(scale, scale);
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === ' ' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
@@ -215,13 +249,36 @@ export function GameCanvas() {
         game.setMouse0Down(null);
       }
     }
+    function handleTouchStart(event: TouchEvent) {
+      const touch = event.touches[event.touches.length-1];
+      if(!touch) return;
+      game.setTouchStart({
+        x: touch.clientX,
+        y: touch.clientY,
+      });
+    }
+    function handleTouchEnd(event: TouchEvent) {
+      const touch = event.touches[event.touches.length-1];
+      if(!touch) return;
+      game.setTouchEnd({
+        x: touch.clientX,
+        y: touch.clientY,
+      });
+    }
+    function handlerWindowResize(event: Event) {
+      game.setScreenWidth(Math.min(maxCanvasWidth, window.innerWidth));
+    }
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('resize', handlerWindowResize);
 
     game.setShowingWidth(plr.size.x+20);
     game.setHiScore(+(localStorage.getItem('hi-score')||'0'));
+    game.setScreenWidth(Math.min(maxCanvasWidth, window.innerWidth));
 
     let time0 = -1;
     
@@ -246,14 +303,16 @@ export function GameCanvas() {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('resize', handlerWindowResize);
     };
   }, []);
 
   return (
     <canvas 
       ref={canvasRef}
-      width={screenWidth}
-      height={screenHeight}
+      style={{ width: `min(100%,${maxCanvasWidth})`, height: `${maxCanvasHeight}px` }}
     />
   );
 }

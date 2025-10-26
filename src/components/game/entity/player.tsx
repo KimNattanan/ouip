@@ -80,17 +80,9 @@ export const usePlayer = (pos0: Point, size0: Point, gravity: number) => {
         if(game.status=='playing' && game.keyPressed.get('ArrowDown')){
           plr.status = 'ducking';
           plr.velocity.y = 700;
-          // plr.size = {
-          //   x: plr0.size.x,
-          //   y: plr0.size.y/2,
-          // };
-          // plr.pivot = {
-          //   x: plr0.size.x,
-          //   y: plr0.size.y/2,
-          // };
           plr.size.y = plr.pivot.y = plr0.size.y/2;
         }
-        else if(plr.grounded && (game.keyPressed.get('ArrowUp') || game.keyPressed.get(' '))){
+        else if(plr.grounded && (game.keyPressed.get('ArrowUp') || game.keyPressed.get(' ') || game.touchStart)){
           plr.status = 'jumping';
           plr.grounded = false;
           plr.velocity.y = -700;
@@ -123,7 +115,7 @@ export const usePlayer = (pos0: Point, size0: Point, gravity: number) => {
       }
       plr.anims.get(plr.status)?.upd(dt);
     },
-    draw(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
+    draw: (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
       const img = plr.anims.get(plr.status)?.getImg();
       if(img){
         ctx.drawImage(
